@@ -1,0 +1,2455 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SetuGov 2.0 — AI Citizen Gateway & Administration Hub</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <!-- SheetJS (xlsx) for native Excel export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        brand: {
+                            50:'#eff6ff', 100:'#dbeafe', 200:'#bfdbfe', 300:'#93c5fd',
+                            400:'#60a5fa', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8',
+                            800:'#1e40af', 900:'#1e3a8a', 950:'#0b162c'
+                        },
+                        cyanAccent: {
+                            400:'#22d3ee', 500:'#06b6d4', 600:'#0891b2'
+                        },
+                        cyber: {
+                            emerald: '#10b981',
+                            violet: '#8b5cf6',
+                            fuchsia: '#d946ef',
+                            amber: '#f59e0b',
+                            rose: '#f43f5e'
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2.5s infinite',
+                        'marquee': 'marquee 28s linear infinite',
+                        'scanline': 'scanline 1.8s ease-in-out infinite alternate',
+                        'float': 'floating 6s ease-in-out infinite'
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+                            '50%': { opacity: '0.8', transform: 'scale(1.05)' }
+                        },
+                        marquee: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-50%)' }
+                        },
+                        scanline: {
+                            '0%': { top: '0%' },
+                            '100%': { top: '95%' }
+                        },
+                        floating: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-8px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #07090e; }
+
+        #bg-canvas {
+            position: fixed; inset: 0; pointer-events: none; z-index: 0; width: 100vw; height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(14, 18, 27, 0.72);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+        }
+
+        .glass-panel-glow {
+            position: relative;
+            background: rgba(13, 17, 26, 0.75);
+            backdrop-filter: blur(24px) saturate(190%);
+            -webkit-backdrop-filter: blur(24px) saturate(190%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: border-color 0.3s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s;
+        }
+
+        .spotlight-card {
+            position: relative;
+            overflow: hidden;
+        }
+        .spotlight-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(400px circle at var(--mouse-x, -200px) var(--mouse-y, -200px), rgba(59, 130, 246, 0.15), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .spotlight-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: radial-gradient(300px circle at var(--mouse-x, -200px) var(--mouse-y, -200px), rgba(96, 165, 250, 0.5), transparent 60%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .spotlight-card:hover::before, .spotlight-card:hover::after {
+            opacity: 1;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(10, 14, 23, 0.5); }
+        ::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.6); }
+
+        .btn-vibe {
+            position: relative;
+            background: linear-gradient(135deg, #2563eb, #06b6d4);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 0 20px -3px rgba(37, 99, 235, 0.45);
+        }
+        .btn-vibe:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 0 30px 2px rgba(6, 182, 212, 0.55);
+        }
+        .btn-vibe:active {
+            transform: translateY(0) scale(0.99);
+        }
+
+        .btn-admin {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            box-shadow: 0 0 20px -3px rgba(245, 158, 11, 0.4);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .btn-admin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px 2px rgba(245, 158, 11, 0.6);
+        }
+
+        .scanline-bar {
+            position: absolute; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, #22d3ee, #60a5fa, #22d3ee, transparent);
+            box-shadow: 0 0 16px 4px rgba(34, 211, 238, 0.7);
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .service-tile {
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .service-tile:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 20px 40px -15px rgba(37, 99, 235, 0.35);
+        }
+        .service-tile:hover .service-icon {
+            transform: scale(1.15) rotate(4deg);
+            filter: drop-shadow(0 0 12px rgba(96, 165, 250, 0.7));
+        }
+
+        .cyber-input {
+            background: rgba(17, 24, 39, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .cyber-input:focus {
+            border-color: #3b82f6;
+            background: rgba(17, 24, 39, 0.9);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25), 0 0 15px rgba(59, 130, 246, 0.2);
+            outline: none;
+        }
+
+        .toast-vibe {
+            animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes toastSlideIn {
+            from { transform: translateX(100%) scale(0.9); opacity: 0; }
+            to { transform: translateX(0) scale(1); opacity: 1; }
+        }
+
+        .typing-cursor::after {
+            content: '▌';
+            opacity: 1;
+            animation: blink 0.9s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        .live-dot {
+            box-shadow: 0 0 10px #10b981;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen relative overflow-x-hidden selection:bg-brand-500 selection:text-white">
+
+    <!-- Interactive Ambient Canvas Background -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Top System Ticker (Cyber Live Marquee) -->
+    <div class="relative z-50 bg-black/60 border-b border-white/5 py-1.5 px-4 backdrop-blur-md text-[11px] font-mono flex items-center justify-between text-slate-400 overflow-hidden">
+        <div class="flex items-center gap-3 overflow-hidden whitespace-nowrap">
+            <span id="role-pill" class="inline-flex items-center gap-1.5 text-cyber-emerald font-semibold bg-cyber-emerald/10 px-2 py-0.5 rounded-full border border-cyber-emerald/30">
+                <span class="w-1.5 h-1.5 rounded-full bg-cyber-emerald animate-ping"></span>
+                <span id="role-pill-text">CITIZEN GATEWAY</span>
+            </span>
+            <div class="inline-flex animate-marquee gap-8 text-slate-300">
+                <span class="flex items-center gap-1.5"><i class="fas fa-file-excel text-emerald-400"></i> Master Excel Sheet: <span class="text-white font-bold">setugov.xlsx</span> Synchronized</span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-satellite-dish text-brand-400"></i> DigiLocker 2.0 API Connected • Latency: <span class="text-brand-300">18ms</span></span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-user-shield text-cyber-amber"></i> Officer Scrutiny Console Ready • Decision Engine Online</span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-shield-halved text-cyanAccent-400"></i> 256-bit AES Zero-Knowledge Audit Trail Active</span>
+            </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-4 text-slate-400">
+            <button onclick="toggleSound()" id="sound-btn" class="hover:text-white transition flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10" title="Toggle UI Sound Effects">
+                <i class="fas fa-volume-high text-brand-400" id="sound-icon"></i>
+                <span class="text-[10px]">SFX: <span id="sound-status" class="text-emerald-400">ON</span></span>
+            </button>
+            <div class="flex items-center gap-1 font-mono text-[11px]">
+                <i class="far fa-clock text-slate-500"></i>
+                <span id="live-clock">--:--:--</span>
+            </div>
+            <span class="text-xs text-slate-600">|</span>
+            <kbd onclick="openCmdPalette()" class="cursor-pointer hover:bg-white/10 transition px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                <span>⌘K</span> <span class="hidden lg:inline text-slate-500">Palette</span>
+            </kbd>
+        </div>
+    </div>
+
+    <!-- Toast Notification Hub -->
+    <div class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none" id="toast-container"></div>
+
+    <!-- Navigation Header -->
+    <nav id="navbar" class="sticky top-0 z-40 transition-all duration-300 bg-slate-950/70 backdrop-blur-xl border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3 cursor-pointer group" onclick="switchView('citizen')">
+                <div class="relative">
+                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-cyanAccent-400 p-[1px] shadow-lg shadow-brand-500/30 group-hover:shadow-cyanAccent-500/40 transition-all duration-300">
+                        <div class="w-full h-full bg-slate-900 rounded-[15px] flex items-center justify-center">
+                            <i class="fas fa-landmark text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-cyanAccent-300 text-lg group-hover:scale-110 transition-transform"></i>
+                        </div>
+                    </div>
+                    <span class="absolute -top-1 -right-1 w-3 h-3 bg-cyber-emerald rounded-full border-2 border-slate-950 live-dot"></span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl font-black tracking-tight text-white flex items-center gap-1">
+                            Setu<span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-cyanAccent-400">Gov</span>
+                        </span>
+                        <span class="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30 font-mono font-bold">2.0 HUB</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 hidden sm:block -mt-0.5">Citizen Gateway & Administration</p>
+                </div>
+            </div>
+
+            <!-- Global Action Center & Role Switcher -->
+            <div class="flex items-center gap-2.5 sm:gap-3">
+                <!-- POV Switcher Button -->
+                <button onclick="togglePOV()" id="pov-toggle-btn" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyber-amber/15 hover:bg-cyber-amber/25 border border-cyber-amber/40 text-cyber-amber transition-all text-xs font-bold shadow-lg shadow-cyber-amber/10">
+                    <i class="fas fa-user-shield text-sm"></i>
+                    <span id="pov-toggle-text" class="hidden sm:inline">Switch to Admin POV</span>
+                    <span class="sm:hidden">Admin</span>
+                </button>
+
+                <!-- Search / Cmd+K Trigger -->
+                <button onclick="openCmdPalette()" class="hidden md:flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-900/80 border border-white/10 text-slate-400 hover:text-slate-200 hover:border-brand-500/50 transition-all text-xs font-medium">
+                    <i class="fas fa-magnifying-glass text-slate-500 text-xs"></i>
+                    <span>Quick commands...</span>
+                    <span class="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-mono text-slate-400">Ctrl+K</span>
+                </button>
+
+                <!-- Profile Dropdown -->
+                <div class="relative" id="profile-container">
+                    <button onclick="toggleDropdown()" class="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-cyanAccent-400 flex items-center justify-center text-white font-bold text-sm shadow-md" id="profile-avatar">
+                            SG
+                        </div>
+                        <div class="text-left hidden md:block">
+                            <div class="text-xs font-semibold text-slate-200" id="nav-user-name">Guest Citizen</div>
+                            <div class="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
+                                <span class="w-1.5 h-1.5 rounded-full bg-cyber-emerald"></span> Verified DigiLocker
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs text-slate-500 ml-1"></i>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="profile-dropdown" class="hidden absolute right-0 top-full mt-2 w-64 glass-panel rounded-2xl border border-white/10 shadow-2xl p-2 z-50">
+                        <div class="px-3 py-2.5 border-b border-white/5 mb-1">
+                            <p class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Citizen Account</p>
+                            <p class="text-xs font-semibold text-white truncate" id="dropdown-email">citizen@setugov.in</p>
+                        </div>
+                        <button onclick="showProfileModal(); closeDropdown()" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-brand-500/20 rounded-xl transition">
+                            <i class="fas fa-id-card text-brand-400 w-4 text-center"></i> Edit Citizen Profile
+                        </button>
+                        <button onclick="showApplications(); closeDropdown()" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-brand-500/20 rounded-xl transition">
+                            <i class="fas fa-folder-tree text-cyanAccent-400 w-4 text-center"></i> Track Applications
+                        </button>
+                        <button onclick="switchView('admin'); closeDropdown()" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-cyber-amber hover:text-white hover:bg-cyber-amber/20 rounded-xl transition">
+                            <i class="fas fa-user-shield text-cyber-amber w-4 text-center"></i> Administrator POV (Excel Ledger)
+                        </button>
+                        <div class="border-t border-white/5 my-1"></div>
+                        <button onclick="logout()" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/20 rounded-xl transition">
+                            <i class="fas fa-arrow-right-from-bracket text-rose-400 w-4 text-center"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== LOGIN SECTION (WITH 1-CLICK DEMO PROFILES) ===== -->
+    <div id="login-section" class="relative z-10 min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
+        <div class="w-full max-w-lg">
+            <div class="glass-panel-glow rounded-3xl p-8 sm:p-10 shadow-2xl shadow-brand-500/10 border border-white/10 relative overflow-hidden">
+                <div class="absolute -top-24 -left-24 w-60 h-60 bg-brand-500/20 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-24 -right-24 w-60 h-60 bg-cyanAccent-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="text-center mb-8 relative z-10">
+                    <div class="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyanAccent-500 mb-4 shadow-lg shadow-brand-500/30">
+                        <i class="fas fa-fingerprint text-white text-2xl"></i>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Citizen Authentication</h1>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-2">Sign in or pick a demo applicant profile to test AI auto-fill.</p>
+                </div>
+
+                <!-- 1-Click Demo Profiles -->
+                <div class="mb-6 p-3 rounded-2xl bg-slate-900/90 border border-white/10">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <i class="fas fa-sparkles text-cyber-amber"></i> Quick Demo Profiles (1-Click Fill)
+                        </span>
+                        <span class="text-[10px] text-brand-400 font-mono">Ready to test</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="loadDemoProfile('priya')" class="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-brand-500/20 border border-white/5 hover:border-brand-500/30 text-left transition group">
+                            <div class="text-[11px] font-semibold text-white group-hover:text-brand-300">Priya S.</div>
+                            <div class="text-[9px] text-slate-400">Founder & Tech</div>
+                        </button>
+                        <button type="button" onclick="loadDemoProfile('rajesh')" class="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-cyanAccent-500/20 border border-white/5 hover:border-cyanAccent-500/30 text-left transition group">
+                            <div class="text-[11px] font-semibold text-white group-hover:text-cyanAccent-300">Rajesh K.</div>
+                            <div class="text-[9px] text-slate-400">Senior Citizen</div>
+                        </button>
+                        <button type="button" onclick="loadDemoProfile('aarav')" class="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-cyber-violet/20 border border-white/5 hover:border-cyber-violet/30 text-left transition group">
+                            <div class="text-[11px] font-semibold text-white group-hover:text-cyber-violet">Aarav P.</div>
+                            <div class="text-[9px] text-slate-400">Student Scholar</div>
+                        </button>
+                    </div>
+                </div>
+
+                <form id="login-form" class="space-y-4 relative z-10">
+                    <div>
+                        <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Full Legal Name</label>
+                        <div class="relative">
+                            <i class="fas fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                            <input type="text" id="login-name" required placeholder="e.g. Priya Sharma"
+                                class="cyber-input w-full pl-9 pr-4 py-3 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Email Address</label>
+                            <div class="relative">
+                                <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                                <input type="email" id="login-email" required placeholder="priya@domain.in"
+                                    class="cyber-input w-full pl-9 pr-4 py-3 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Phone Number</label>
+                            <div class="relative">
+                                <i class="fas fa-phone absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                                <input type="tel" id="login-phone" required placeholder="+91 98765 43210"
+                                    class="cyber-input w-full pl-9 pr-4 py-3 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Security Password</label>
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                            <input type="password" id="login-password" required placeholder="••••••••••••"
+                                class="cyber-input w-full pl-9 pr-4 py-3 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-vibe w-full text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 mt-2">
+                        <span>Initialize Citizen Dashboard</span>
+                        <i class="fas fa-arrow-right text-xs"></i>
+                    </button>
+                </form>
+
+                <div class="flex items-center justify-center gap-4 mt-6 text-[11px] text-slate-500 font-mono">
+                    <span class="flex items-center gap-1.5"><i class="fas fa-shield-halved text-cyber-emerald"></i> AES-256</span>
+                    <span>•</span>
+                    <button type="button" onclick="switchView('admin')" class="text-cyber-amber hover:underline flex items-center gap-1 font-bold">
+                        <i class="fas fa-user-shield"></i> Jump to Admin POV
+                    </button>
+                    <span>•</span>
+                    <span class="flex items-center gap-1.5"><i class="fas fa-circle-nodes text-brand-400"></i> Zero Trust</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CITIZEN HOME DASHBOARD ===== -->
+    <div id="home-dashboard" class="hidden relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20">
+        <!-- Top Bento Banner -->
+        <div class="relative overflow-hidden rounded-3xl glass-panel-glow border border-white/10 p-6 sm:p-10 mb-8 spotlight-card">
+            <div class="absolute -right-20 -top-20 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-20 -bottom-20 w-96 h-96 bg-cyanAccent-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div class="max-w-2xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-xs font-mono mb-4">
+                        <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+                        Autonomous Civic Pipeline v2.8
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
+                        Namaste, <span id="welcome-name" class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-cyanAccent-300 to-brand-200">Citizen</span>
+                    </h1>
+                    <p class="text-slate-300 text-sm sm:text-base mt-3 leading-relaxed">
+                        One unified hub for all government schemes. Submit any form in 3 seconds using our verified neural auto-fill agent.
+                    </p>
+
+                    <div class="flex flex-wrap gap-2.5 sm:gap-3 mt-6">
+                        <button onclick="openServiceForm('Aadhar Card Update')" class="btn-vibe text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2">
+                            <i class="fas fa-file-circle-plus"></i> New Application
+                        </button>
+                        <button onclick="showApplications()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-2 transition">
+                            <i class="fas fa-clock-rotate-left text-brand-400"></i> Track Filings (<span id="banner-app-count">3</span>)
+                        </button>
+                        <button onclick="switchView('admin')" class="px-4 py-2.5 rounded-xl bg-cyber-amber/15 hover:bg-cyber-amber/25 border border-cyber-amber/40 text-xs sm:text-sm font-bold text-cyber-amber flex items-center gap-2 transition">
+                            <i class="fas fa-file-excel"></i> Admin Excel View
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 min-w-[280px]">
+                    <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/5 flex flex-col justify-between">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fas fa-hourglass-half text-cyanAccent-400"></i> Avg Processing
+                        </span>
+                        <div class="text-2xl font-black text-white font-mono mt-2">1.8 <span class="text-xs font-normal text-slate-400">days</span></div>
+                        <div class="text-[10px] text-cyber-emerald mt-1"><i class="fas fa-arrow-trend-down"></i> 64% faster with AI</div>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/5 flex flex-col justify-between">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fas fa-shield-check text-cyber-emerald"></i> Trust Rating
+                        </span>
+                        <div class="text-2xl font-black text-cyber-emerald font-mono mt-2">99.8%</div>
+                        <div class="text-[10px] text-slate-400 mt-1">DigiLocker Certified</div>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/5 flex flex-col justify-between">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fas fa-bolt text-cyber-amber"></i> Saved Time
+                        </span>
+                        <div class="text-2xl font-black text-white font-mono mt-2">4.5 <span class="text-xs font-normal text-slate-400">hours</span></div>
+                        <div class="text-[10px] text-cyanAccent-400 mt-1">Zero queue visits</div>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/5 flex flex-col justify-between">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fas fa-file-excel text-emerald-400"></i> Master Excel
+                        </span>
+                        <div class="text-sm font-bold text-white font-mono mt-3">
+                            <span class="text-emerald-400">setugov.xlsx</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1">Live Officer Sync</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Application Tracker Section -->
+        <div class="mb-12">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2.5">
+                        <span class="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center text-sm">
+                            <i class="fas fa-layer-group"></i>
+                        </span>
+                        Active Application Pipeline
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-1 ml-10">Real-time status synced with government databases</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="showApplications()" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 hover:text-white transition flex items-center gap-1.5">
+                        View All Archive <i class="fas fa-arrow-right text-[10px]"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="recent-apps"></div>
+        </div>
+
+        <!-- Services Grid with Live Category Filters & Search -->
+        <div class="mb-14">
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2.5">
+                        <span class="w-8 h-8 rounded-xl bg-cyanAccent-500/20 text-cyanAccent-400 flex items-center justify-center text-sm">
+                            <i class="fas fa-grid-2"></i>
+                        </span>
+                        Civic Services Directory
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-1 ml-10">Pick a service to launch neural auto-fill</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="relative">
+                        <i class="fas fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <input type="text" id="service-search-input" oninput="filterServices()" placeholder="Filter services..."
+                            class="cyber-input pl-8 pr-3 py-1.5 rounded-xl text-xs text-slate-200 placeholder-slate-500 w-44">
+                    </div>
+                    <div class="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-white/10 text-xs">
+                        <button onclick="setCategoryFilter('all')" class="cat-pill px-3 py-1 rounded-lg text-slate-300 font-medium active bg-brand-500/30 text-white" data-cat="all">All</button>
+                        <button onclick="setCategoryFilter('identity')" class="cat-pill px-3 py-1 rounded-lg text-slate-400 font-medium hover:text-white" data-cat="identity">Identity</button>
+                        <button onclick="setCategoryFilter('business')" class="cat-pill px-3 py-1 rounded-lg text-slate-400 font-medium hover:text-white" data-cat="business">Business</button>
+                        <button onclick="setCategoryFilter('welfare')" class="cat-pill px-3 py-1 rounded-lg text-slate-400 font-medium hover:text-white" data-cat="welfare">Welfare</button>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" id="services-grid"></div>
+        </div>
+
+        <!-- AI Copilot Chat -->
+        <div class="glass-panel-glow rounded-3xl border border-white/10 overflow-hidden shadow-2xl relative">
+            <div class="bg-gradient-to-r from-brand-950 via-slate-900 to-cyanAccent-950 p-6 border-b border-white/10 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                    <div class="relative">
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyanAccent-500 to-brand-500 flex items-center justify-center shadow-lg shadow-cyanAccent-500/30">
+                            <i class="fas fa-brain text-white text-xl"></i>
+                        </div>
+                        <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-cyber-emerald border-2 border-slate-900 live-dot"></span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base sm:text-lg font-bold text-white">SetuGov Neural Copilot</h3>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyanAccent-500/20 text-cyanAccent-300 border border-cyanAccent-500/30">v4.8 ACTIVE</span>
+                        </div>
+                        <p class="text-xs text-slate-400">Ask any eligibility, rule, document list, or prompt to auto-open forms</p>
+                    </div>
+                </div>
+                <button onclick="clearFaqHistory()" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-400 hover:text-white transition flex items-center gap-1.5">
+                    <i class="fas fa-trash-can text-[11px]"></i> Clear Chat
+                </button>
+            </div>
+
+            <div class="p-5 sm:p-6">
+                <div id="faq-chat" class="space-y-4 max-h-[380px] overflow-y-auto pr-2 pb-2 mb-4 scrollbar-thin">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyanAccent-500 to-brand-500 flex items-center justify-center flex-shrink-0 text-white text-xs">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="glass-panel p-4 rounded-2xl rounded-tl-sm max-w-xl border border-white/10 shadow-sm text-sm text-slate-200 leading-relaxed">
+                            <p class="font-semibold text-cyanAccent-300 mb-1 flex items-center gap-1.5">
+                                <i class="fas fa-wave-pulse"></i> Ready to assist you
+                            </p>
+                            <p>I can help you prepare any government application, verify documentation requirements, calculate tax exemptions, or inspect application status. Try clicking a quick prompt below or typing your question!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 overflow-x-auto pb-3 pt-1 mb-4 no-scrollbar" id="faq-chips">
+                    <button onclick="askFaqQuestion('How do I apply for a business license?')" class="suggestion-chip flex-shrink-0 text-xs px-3.5 py-1.5 rounded-full bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-brand-400 hover:bg-brand-500/20 transition">
+                        🏢 Business License requirements
+                    </button>
+                    <button onclick="askFaqQuestion('What documents do I need for a pension application?')" class="suggestion-chip flex-shrink-0 text-xs px-3.5 py-1.5 rounded-full bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyanAccent-400 hover:bg-cyanAccent-500/20 transition">
+                        👴 Pension Service Docs
+                    </button>
+                    <button onclick="askFaqQuestion('How do I pay my property tax?')" class="suggestion-chip flex-shrink-0 text-xs px-3.5 py-1.5 rounded-full bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyber-emerald hover:bg-cyber-emerald/20 transition">
+                        🏠 Property Tax Assessment
+                    </button>
+                    <button onclick="askFaqQuestion('What is AI Auto-Fill?')" class="suggestion-chip flex-shrink-0 text-xs px-3.5 py-1.5 rounded-full bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyber-amber hover:bg-cyber-amber/20 transition">
+                        ⚡ How does AI Auto-Fill work?
+                    </button>
+                    <button onclick="askFaqQuestion('Is my data secure?')" class="suggestion-chip flex-shrink-0 text-xs px-3.5 py-1.5 rounded-full bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyber-violet hover:bg-cyber-violet/20 transition">
+                        🛡️ Data Privacy & Encryption
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2.5">
+                    <div class="relative flex-1">
+                        <input type="text" id="faq-input" placeholder="Ask anything, e.g. 'Can I update Aadhar address without proof?'"
+                            class="cyber-input w-full pl-4 pr-12 py-3.5 rounded-2xl text-sm text-slate-100 placeholder-slate-500"
+                            onkeypress="if(event.key==='Enter') sendFaqMessage()">
+                        <button type="button" onclick="triggerVoiceInput()" id="voice-btn" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyanAccent-400 transition" title="Voice Dictation">
+                            <i class="fas fa-microphone text-sm"></i>
+                        </button>
+                    </div>
+                    <button onclick="sendFaqMessage()" class="btn-vibe text-white px-6 py-3.5 rounded-2xl font-bold text-sm flex items-center gap-2 flex-shrink-0">
+                        <span>Send</span>
+                        <i class="fas fa-paper-plane text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ADMINISTRATOR POV DASHBOARD (EXCEL SHEET "SETUGOV.XLSX" & DECISION HUB) ===== -->
+    <div id="admin-dashboard" class="hidden relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20">
+
+        <!-- Top Admin Header Banner -->
+        <div class="relative overflow-hidden rounded-3xl glass-panel-glow border border-cyber-amber/30 p-6 sm:p-8 mb-8 spotlight-card">
+            <div class="absolute -right-24 -top-24 w-80 h-80 bg-cyber-amber/15 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-24 -bottom-24 w-80 h-80 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyber-amber/10 border border-cyber-amber/30 text-cyber-amber text-xs font-mono mb-3">
+                        <i class="fas fa-shield-halved"></i>
+                        <span>OFFICER CLEARANCE LEVEL 4 • TEHSILDAR / SCRUTINY DESK</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight flex items-center gap-3">
+                        <span>Civic Administration Center</span>
+                        <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-bold flex items-center gap-1.5">
+                            <i class="fas fa-file-excel"></i> setugov.xlsx
+                        </span>
+                    </h1>
+                    <p class="text-slate-300 text-xs sm:text-sm mt-2 max-w-2xl">
+                        Review all citizen applications ingested into the <span class="text-emerald-400 font-mono font-bold">setugov</span> master ledger. Adjudicate requests as <span class="text-cyanAccent-400 font-bold">In Review</span>, <span class="text-cyber-emerald font-bold">Accepted / Approved</span>, or <span class="text-cyber-rose font-bold">Rejected</span> with immediate real-time sync.
+                    </p>
+                </div>
+
+                <!-- Admin Action Buttons -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button onclick="exportToExcel()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold flex items-center gap-2 transition shadow-lg shadow-emerald-600/30">
+                        <i class="fas fa-file-excel text-base"></i>
+                        <span>Download setugov.xlsx</span>
+                    </button>
+                    <button onclick="injectMockCitizenApplication()" class="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-2 transition">
+                        <i class="fas fa-plus text-cyanAccent-400"></i>
+                        <span>Simulate Applicant</span>
+                    </button>
+                    <button onclick="switchView('citizen')" class="px-3.5 py-2.5 rounded-xl bg-brand-500/20 hover:bg-brand-500/30 border border-brand-500/40 text-xs sm:text-sm font-semibold text-brand-300 flex items-center gap-2 transition">
+                        <i class="fas fa-user"></i>
+                        <span>Citizen View</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Metrics Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
+            <div class="p-4 rounded-2xl glass-panel border border-white/10 flex flex-col justify-between">
+                <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fas fa-database text-brand-400"></i> Total Ingested
+                </span>
+                <div class="text-2xl sm:text-3xl font-black text-white font-mono mt-2" id="adm-count-total">0</div>
+                <div class="text-[10px] text-slate-500 mt-1 font-mono">Row entries in sheet</div>
+            </div>
+            <div class="p-4 rounded-2xl glass-panel border border-cyber-amber/20 flex flex-col justify-between">
+                <span class="text-[10px] font-mono text-cyber-amber uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fas fa-clock"></i> Pending Initial
+                </span>
+                <div class="text-2xl sm:text-3xl font-black text-cyber-amber font-mono mt-2" id="adm-count-pending">0</div>
+                <div class="text-[10px] text-slate-500 mt-1 font-mono">Awaiting triage</div>
+            </div>
+            <div class="p-4 rounded-2xl glass-panel border border-cyanAccent-500/20 flex flex-col justify-between">
+                <span class="text-[10px] font-mono text-cyanAccent-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fas fa-magnifying-glass"></i> Under Review
+                </span>
+                <div class="text-2xl sm:text-3xl font-black text-cyanAccent-400 font-mono mt-2" id="adm-count-review">0</div>
+                <div class="text-[10px] text-slate-500 mt-1 font-mono">Officer investigation</div>
+            </div>
+            <div class="p-4 rounded-2xl glass-panel border border-cyber-emerald/20 flex flex-col justify-between">
+                <span class="text-[10px] font-mono text-cyber-emerald uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fas fa-circle-check"></i> Accepted / Approved
+                </span>
+                <div class="text-2xl sm:text-3xl font-black text-cyber-emerald font-mono mt-2" id="adm-count-approved">0</div>
+                <div class="text-[10px] text-cyber-emerald/80 mt-1 font-mono">Digital pass issued</div>
+            </div>
+            <div class="col-span-2 sm:col-span-1 p-4 rounded-2xl glass-panel border border-rose-500/20 flex flex-col justify-between">
+                <span class="text-[10px] font-mono text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fas fa-circle-xmark"></i> Rejected
+                </span>
+                <div class="text-2xl sm:text-3xl font-black text-rose-400 font-mono mt-2" id="adm-count-rejected">0</div>
+                <div class="text-[10px] text-rose-400/80 mt-1 font-mono">Deficiency noticed</div>
+            </div>
+        </div>
+
+        <!-- Master Excel Sheet View (setugov.xlsx) -->
+        <div class="glass-panel-glow rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+            <!-- Excel Header Tabs & Controls -->
+            <div class="bg-slate-900/90 border-b border-white/10 px-5 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-sm font-bold font-mono">
+                        <i class="fas fa-file-excel"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-white font-mono">setugov.xlsx</span>
+                            <span class="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">Sheet: [setugov]</span>
+                            <span class="text-[10px] text-slate-500 font-mono" id="adm-sheet-rows-label">(0 rows)</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400">Directly synchronized with citizen database • Live Adjudication Enabled</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <input type="text" id="adm-search-input" oninput="renderAdminExcelTable()" placeholder="Search name, ack ID, Aadhaar, city..."
+                            class="cyber-input pl-8 pr-3 py-1.5 rounded-xl text-xs text-slate-200 placeholder-slate-500 w-56">
+                    </div>
+                    <select id="adm-status-filter" onchange="renderAdminExcelTable()"
+                        class="cyber-input px-3 py-1.5 rounded-xl text-xs text-slate-300 font-medium">
+                        <option value="ALL">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Under Review">Under Review</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                    <button onclick="exportToExcel()" class="px-3 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition" title="Export current sheet">
+                        <i class="fas fa-download"></i> <span>Export .xlsx</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Spreadsheet Grid Table -->
+            <div class="overflow-x-auto max-h-[580px] scrollbar-thin">
+                <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                    <thead class="bg-slate-950/80 sticky top-0 z-20 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-white/10">
+                        <tr>
+                            <th class="p-3.5 pl-5">Reference ID</th>
+                            <th class="p-3.5">Applicant Details</th>
+                            <th class="p-3.5">Scheme Requested</th>
+                            <th class="p-3.5">ID / Aadhaar</th>
+                            <th class="p-3.5">Location</th>
+                            <th class="p-3.5">Lodged Date</th>
+                            <th class="p-3.5">Decision Status</th>
+                            <th class="p-3.5 pr-5 text-right">Adjudication Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adm-excel-tbody" class="divide-y divide-white/5 font-sans"></tbody>
+                </table>
+            </div>
+
+            <!-- Table Footer -->
+            <div class="bg-slate-950/60 p-3.5 px-5 border-t border-white/10 flex flex-wrap items-center justify-between text-xs text-slate-400 font-mono">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-cyber-emerald animate-pulse"></span>
+                    <span>Auto-sync enabled: Edits reflect instantaneously in Citizen POV</span>
+                </div>
+                <div>
+                    <span>Workbook format: </span>
+                    <span class="text-white font-bold">XLSX (Microsoft Excel 2007+)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Details & Ledger Inspector Modal -->
+    <div id="apps-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-panel-glow rounded-3xl max-w-3xl w-full max-h-[85vh] overflow-hidden border border-white/10 shadow-2xl flex flex-col">
+            <div class="p-6 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center text-base">
+                        <i class="fas fa-clock-rotate-left"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Application Ledger & Timeline</h3>
+                        <p class="text-xs text-slate-400">All submissions verified on the civic ledger</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('apps-modal')" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-4 flex-1" id="all-apps-list"></div>
+        </div>
+    </div>
+
+    <!-- Service Form Modal with Holographic Scanline -->
+    <div id="service-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-panel-glow rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-hidden border border-white/10 shadow-2xl flex flex-col relative" id="service-modal-box">
+            <div id="modal-scanline" class="scanline-bar hidden"></div>
+
+            <div class="p-6 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-cyanAccent-500 flex items-center justify-center text-white text-base shadow-md">
+                        <i class="fas fa-feather-pointed" id="service-modal-icon"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <span id="service-title">Service Form</span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30">STANDARD FORM</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Fill manually or tap AI Auto-Fill to populate in 1 click</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('service-modal')" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto flex-1 space-y-5">
+                <div class="p-4 rounded-2xl bg-gradient-to-r from-brand-950/70 to-slate-900 border border-brand-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-cyanAccent-500/20 text-cyanAccent-400 flex items-center justify-center text-sm">
+                            <i class="fas fa-wand-magic-sparkles"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                                <span>Zero-Typing Mode</span>
+                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyber-emerald/20 text-cyber-emerald font-mono">100% Match</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Fill all verified identity fields from your encrypted vault.</p>
+                        </div>
+                    </div>
+                    <button type="button" id="ai-fill-btn" onclick="aiAutoFill()" class="btn-vibe text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 flex-shrink-0">
+                        <i class="fas fa-bolt"></i>
+                        <span>AI Auto-Fill Now</span>
+                    </button>
+                </div>
+
+                <form id="gov-form" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Full Legal Name</label>
+                            <input type="text" id="gov-name" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600" placeholder="Legal full name" required>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Date of Birth</label>
+                            <input type="date" id="gov-dob" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Aadhaar / Citizen ID</label>
+                            <input type="text" id="gov-ssn" placeholder="XXXX-XXXX-XXXX" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Registered Phone</label>
+                            <input type="tel" id="gov-phone" placeholder="+91..." class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Email Address</label>
+                            <input type="email" id="gov-email" placeholder="citizen@domain.com" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Permanent Address</label>
+                            <input type="text" id="gov-address" placeholder="Flat, Street, Landmark" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">City / District</label>
+                            <input type="text" id="gov-city" placeholder="City" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">State / UT</label>
+                            <input type="text" id="gov-state" placeholder="State" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Postal Zip Code</label>
+                            <input type="text" id="gov-zip" placeholder="6-digit PIN" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Supporting Document (AI OCR Verification)</label>
+                        <div onclick="simulateDocUpload()" class="border-2 border-dashed border-white/10 hover:border-brand-500/50 rounded-2xl p-4 text-center cursor-pointer transition bg-slate-900/40 hover:bg-brand-500/5 group">
+                            <i class="fas fa-cloud-arrow-up text-xl text-slate-500 group-hover:text-brand-400 transition mb-1.5"></i>
+                            <div class="text-xs font-semibold text-slate-300" id="doc-upload-label">Click to attach ID Proof (PDF, JPG)</div>
+                            <div class="text-[10px] text-slate-500 mt-0.5">DigiLocker OCR automatically validates authenticity</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="p-6 border-t border-white/10 flex items-center justify-between bg-slate-950/60">
+                <button type="button" onclick="clearGovForm()" class="text-xs font-medium text-slate-400 hover:text-white transition">
+                    <i class="fas fa-rotate-left mr-1"></i> Reset Fields
+                </button>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="closeModal('service-modal')" class="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:bg-white/5 transition">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitApplication()" class="btn-vibe text-white text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-2">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Submit Application</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== OFFICER SCRUTINY & DECISION MODAL (ADMIN POV) ===== -->
+    <div id="scrutiny-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div class="glass-panel-glow rounded-3xl max-w-2xl w-full border border-cyber-amber/40 overflow-hidden shadow-2xl flex flex-col">
+            <div class="p-6 border-b border-white/10 bg-slate-900/80 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyber-amber/20 text-cyber-amber flex items-center justify-center text-lg">
+                        <i class="fas fa-gavel"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                            <span>Officer Decision Terminal</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">LIVE SYNC</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Application Reference: <span id="sc-ack" class="font-mono text-cyanAccent-400 font-bold"></span></p>
+                    </div>
+                </div>
+                <button onclick="closeModal('scrutiny-modal')" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+                <div class="p-4 rounded-2xl bg-slate-900 border border-white/10 space-y-3 font-mono text-xs">
+                    <div class="flex justify-between items-center pb-2 border-b border-white/5">
+                        <span class="text-slate-500">Applicant:</span>
+                        <span class="font-bold text-white text-sm" id="sc-name"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-slate-300">
+                        <div><span class="text-slate-500">Service:</span> <span class="text-cyanAccent-300 font-semibold" id="sc-service"></span></div>
+                        <div><span class="text-slate-500">Aadhaar/ID:</span> <span class="text-white" id="sc-ssn"></span></div>
+                        <div><span class="text-slate-500">Phone:</span> <span class="text-white" id="sc-phone"></span></div>
+                        <div><span class="text-slate-500">Email:</span> <span class="text-white truncate" id="sc-email"></span></div>
+                        <div><span class="text-slate-500">DOB:</span> <span class="text-white" id="sc-dob"></span></div>
+                        <div><span class="text-slate-500">Lodged:</span> <span class="text-white" id="sc-date"></span></div>
+                    </div>
+                    <div class="pt-2 border-t border-white/5 text-slate-300">
+                        <span class="text-slate-500">Full Address:</span>
+                        <p class="text-white mt-0.5" id="sc-address"></p>
+                    </div>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2 text-emerald-300 font-mono">
+                        <i class="fas fa-shield-check text-base text-cyber-emerald"></i>
+                        <span>UIDAI & DigiLocker Biometrics Certified (99.8% Match)</span>
+                    </div>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">VERIFIED</span>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">Official Adjudication Remarks</label>
+                    <textarea id="sc-remarks" rows="2" placeholder="e.g. Address proof verified against municipal records, approved for biometric issuance..."
+                        class="cyber-input w-full p-3 rounded-xl text-xs text-slate-200 placeholder-slate-600 focus:outline-none"></textarea>
+                </div>
+
+                <div class="pt-2">
+                    <div class="text-[11px] font-mono text-slate-400 uppercase mb-2">Record Official Decision in setugov.xlsx:</div>
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <button type="button" onclick="applyDecision('Under Review')" class="py-3 px-3 rounded-xl bg-cyanAccent-500/20 hover:bg-cyanAccent-500/30 border border-cyanAccent-500/50 text-cyanAccent-300 font-bold text-xs flex flex-col items-center gap-1 transition">
+                            <i class="fas fa-magnifying-glass text-sm"></i>
+                            <span>Mark In Review</span>
+                        </button>
+                        <button type="button" onclick="applyDecision('Approved')" class="py-3 px-3 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/60 text-emerald-300 font-bold text-xs flex flex-col items-center gap-1 transition shadow-lg shadow-emerald-500/10">
+                            <i class="fas fa-circle-check text-sm text-cyber-emerald"></i>
+                            <span>Accept & Approve</span>
+                        </button>
+                        <button type="button" onclick="applyDecision('Rejected')" class="py-3 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/50 text-rose-300 font-bold text-xs flex flex-col items-center gap-1 transition">
+                            <i class="fas fa-circle-xmark text-sm text-rose-400"></i>
+                            <span>Reject Request</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Edit Modal -->
+    <div id="profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-panel-glow rounded-3xl max-w-md w-full max-h-[90vh] overflow-hidden border border-white/10 shadow-2xl flex flex-col">
+            <div class="p-6 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
+                        <i class="fas fa-user-gear"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Citizen Vault Profile</h3>
+                        <p class="text-xs text-slate-400">Stores credentials for automatic 1-click forms</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('profile-modal')" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="profile-form" class="p-6 space-y-3 overflow-y-auto flex-1">
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Full Legal Name</label>
+                    <input type="text" id="pi-name" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Email</label>
+                    <input type="email" id="pi-email" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Phone</label>
+                    <input type="tel" id="pi-phone" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200" required>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Date of Birth</label>
+                        <input type="date" id="pi-dob" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Aadhaar / SSN</label>
+                        <input type="text" id="pi-ssn" placeholder="XXXX-XXXX-XXXX" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Street Address</label>
+                    <input type="text" id="pi-address" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200" required>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">City</label>
+                        <input type="text" id="pi-city" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">State</label>
+                        <input type="text" id="pi-state" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Pin Code</label>
+                    <input type="text" id="pi-zip" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200" required>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" onclick="closeModal('profile-modal')" class="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white">Cancel</button>
+                    <button type="submit" class="btn-vibe text-white text-xs font-bold px-5 py-2.5 rounded-xl">Save Vault</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Command Palette (Ctrl+K) -->
+    <div id="cmd-palette-modal" class="hidden fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-panel-glow rounded-2xl max-w-xl w-full border border-white/10 shadow-2xl overflow-hidden scale-in">
+            <div class="p-3 border-b border-white/10 flex items-center gap-3">
+                <i class="fas fa-terminal text-brand-400 text-sm pl-2"></i>
+                <input type="text" id="cmd-input" oninput="handleCmdSearch()" placeholder="Type command (e.g. 'Admin', 'Excel', 'Aadhar', 'Sound')..."
+                    class="bg-transparent border-none text-white text-sm focus:outline-none w-full placeholder-slate-500 font-mono">
+                <kbd onclick="closeModal('cmd-palette-modal')" class="text-[10px] text-slate-500 px-2 py-0.5 rounded bg-white/5 cursor-pointer">ESC</kbd>
+            </div>
+            <div id="cmd-results" class="p-2 max-h-72 overflow-y-auto space-y-1"></div>
+        </div>
+    </div>
+
+    <!-- Digital Acknowledgement Receipt Slip Modal -->
+    <div id="receipt-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div class="glass-panel-glow rounded-3xl max-w-md w-full border border-cyanAccent-500/30 p-6 shadow-2xl relative">
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-cyber-emerald to-cyanAccent-400 flex items-center justify-center text-slate-950 text-xl font-bold mb-3 shadow-lg shadow-cyber-emerald/30">
+                    <i class="fas fa-stamp"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">Digital Submission Pass</h3>
+                <p class="text-xs text-slate-400 font-mono" id="receipt-id">ACK-SETU-9823481</p>
+            </div>
+
+            <div class="bg-slate-900/90 rounded-2xl p-4 border border-white/10 font-mono text-xs space-y-2 mb-6 text-slate-300">
+                <div class="flex justify-between"><span class="text-slate-500">Service:</span> <span class="font-bold text-white" id="receipt-service">Aadhar Update</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Applicant:</span> <span class="text-white" id="receipt-applicant">Priya Sharma</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Timestamp:</span> <span class="text-cyanAccent-400" id="receipt-time">2026-10-04</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Ledger Block:</span> <span class="text-brand-300">#481,209</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Status:</span> <span class="text-cyber-emerald font-bold" id="receipt-status">DIGITALLY VERIFIED</span></div>
+                <div class="border-t border-dashed border-white/10 my-2 pt-2 text-center text-[10px] text-slate-500">
+                    Scan with any government QR scanner
+                </div>
+                <div class="flex justify-center pt-1">
+                    <div class="w-24 h-24 bg-white p-1 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-qrcode text-6xl text-slate-900"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="closeModal('receipt-modal')" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 transition">
+                    Close Pass
+                </button>
+                <button onclick="window.print()" class="flex-1 py-2.5 rounded-xl btn-vibe text-white text-xs font-bold transition flex items-center justify-center gap-1.5">
+                    <i class="fas fa-print"></i> Print Slip
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // Audio Synthesizer
+        let audioCtx = null;
+        let sfxEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playTone(freq, type, duration, gainLevel = 0.08) {
+            if (!sfxEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(gainLevel, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {}
+        }
+
+        function sfxClick() { playTone(600, 'sine', 0.08, 0.05); }
+        function sfxHover() { playTone(450, 'sine', 0.04, 0.02); }
+        function sfxSuccess() {
+            if (!sfxEnabled) return;
+            playTone(523.25, 'triangle', 0.15, 0.08);
+            setTimeout(() => playTone(659.25, 'triangle', 0.2, 0.08), 100);
+            setTimeout(() => playTone(783.99, 'triangle', 0.3, 0.1), 200);
+        }
+        function sfxReject() {
+            if (!sfxEnabled) return;
+            playTone(400, 'sawtooth', 0.15, 0.08);
+            setTimeout(() => playTone(280, 'sawtooth', 0.25, 0.08), 120);
+        }
+        function sfxScan() {
+            if (!sfxEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.35);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.35);
+            } catch (e) {}
+        }
+
+        function toggleSound() {
+            sfxEnabled = !sfxEnabled;
+            const statusEl = document.getElementById('sound-status');
+            const iconEl = document.getElementById('sound-icon');
+            if (sfxEnabled) {
+                statusEl.textContent = 'ON';
+                statusEl.className = 'text-emerald-400';
+                iconEl.className = 'fas fa-volume-high text-brand-400';
+                sfxClick();
+                showToast('UI Audio effects enabled', 'success');
+            } else {
+                statusEl.textContent = 'MUTED';
+                statusEl.className = 'text-slate-500';
+                iconEl.className = 'fas fa-volume-xmark text-slate-500';
+                showToast('Audio muted', 'info');
+            }
+        }
+
+        // Interactive Constellation Background
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+        let particles = [];
+        let mouse = { x: -1000, y: -1000 };
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            document.querySelectorAll('.spotlight-card').forEach(card => {
+                const rect = card.getBoundingClientRect();
+                card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+                card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+            });
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.45;
+                this.vy = (Math.random() - 0.5) * 0.45;
+                this.radius = Math.random() * 1.6 + 0.7;
+                this.color = Math.random() > 0.4 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(34, 211, 238, 0.35)';
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 90) {
+                    this.x -= (dx / dist) * 1.5;
+                    this.y -= (dy / dist) * 1.5;
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            const count = Math.min(Math.floor((width * height) / 18000), 75);
+            for (let i = 0; i < count; i++) particles.push(new Particle());
+        }
+
+        function animateCanvas() {
+            ctx.clearRect(0, 0, width, height);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 110) {
+                        ctx.strokeStyle = `rgba(59, 130, 246, ${0.12 * (1 - dist / 110)})`;
+                        ctx.lineWidth = 0.7;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+                particles[i].update();
+                particles[i].draw();
+            }
+            requestAnimationFrame(animateCanvas);
+        }
+
+        initParticles();
+        animateCanvas();
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('live-clock').textContent = now.toLocaleTimeString('en-US', { hour12: false }) + ' IST';
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        const DB_KEY = 'setuGovUser';
+        const APPS_KEY = 'setuGovApps';
+        const VAULT_KEY = 'setuGovPersonalInfo';
+
+        const services = [
+            { name:'Aadhar Card Update', icon:'fingerprint', category:'identity', label:'Aadhaar Card', sub:'Update biometric or address', gradient:'from-blue-600 to-indigo-600', wait:'1-2 Days' },
+            { name:'PAN Card Application', icon:'id-card', category:'identity', label:'PAN Card 2.0', sub:'Instant e-PAN or Physical', gradient:'from-emerald-600 to-teal-600', wait:'30 Mins' },
+            { name:'Voter ID Registration', icon:'vote-yea', category:'identity', label:'Voter ID (EPIC)', sub:'Electoral Roll & Polling Slip', gradient:'from-pink-600 to-rose-600', wait:'3 Days' },
+            { name:'Healthcare Scheme', icon:'heart-pulse', category:'welfare', label:'Ayushman Bharat', sub:'5 Lakh Health Shield', gradient:'from-red-600 to-amber-600', wait:'Instant' },
+            { name:'Scholarship Application', icon:'graduation-cap', category:'welfare', label:'National Scholar', sub:'Central Student Financial Aid', gradient:'from-amber-600 to-orange-600', wait:'7 Days' },
+            { name:'Ration Card', icon:'basket-shopping', category:'welfare', label:'One Nation Ration', sub:'Food Security Subsidies', gradient:'from-orange-600 to-amber-700', wait:'4 Days' },
+            { name:'Driving License', icon:'car', category:'identity', label:'Driving License', sub:'Learner & Permanent Parivahan', gradient:'from-sky-600 to-blue-700', wait:'2 Days' },
+            { name:'Income Certificate', icon:'file-invoice-dollar', category:'welfare', label:'Income Cert', sub:'Tehsildar Revenue Attestation', gradient:'from-teal-600 to-cyan-700', wait:'3 Days' },
+            { name:'Business License Application', icon:'store', category:'business', label:'Business License', sub:'MSME Udyam & Trade Registry', gradient:'from-cyan-600 to-blue-800', wait:'1 Day' },
+            { name:'Pension Service Application', icon:'hand-holding-dollar', category:'welfare', label:'Senior Pension', sub:'Atal Pension / EPFO Scheme', gradient:'from-rose-600 to-purple-700', wait:'5 Days' },
+            { name:'Property Tax Application', icon:'house', category:'business', label:'Property Tax', sub:'Municipal Geo Assessment', gradient:'from-violet-600 to-indigo-800', wait:'Instant' }
+        ];
+
+        const demoCitizens = {
+            priya: {
+                name: 'Priya Sharma',
+                email: 'priya.sharma@techventure.in',
+                phone: '+91 98201 12345',
+                dob: '1996-08-14',
+                ssn: '8492-3810-9281',
+                address: 'Flat 402, Cyber Heights, Indiranagar',
+                city: 'Bengaluru',
+                state: 'Karnataka',
+                zip: '560038'
+            },
+            rajesh: {
+                name: 'Rajesh Kumar Verma',
+                email: 'rajesh.verma@seniorgov.in',
+                phone: '+91 94150 99881',
+                dob: '1962-03-22',
+                ssn: '4920-1192-3021',
+                address: '12-A, Old Cantonment Road',
+                city: 'Lucknow',
+                state: 'Uttar Pradesh',
+                zip: '226001'
+            },
+            aarav: {
+                name: 'Aarav Patel',
+                email: 'aarav.patel@iitd.ac.in',
+                phone: '+91 91234 56789',
+                dob: '2004-11-05',
+                ssn: '7721-9043-1823',
+                address: 'Hostel 7, Nilgiri House, IIT Campus',
+                city: 'New Delhi',
+                state: 'Delhi',
+                zip: '110016'
+            }
+        };
+
+        const defaultApps = [
+            {
+                id: 101, ackId: 'ACK-AAD-8921', service: 'Aadhar Card Update',
+                applicantName: 'Priya Sharma', applicantEmail: 'priya.sharma@techventure.in', applicantPhone: '+91 98201 12345',
+                dob: '1996-08-14', ssn: '8492-3810-9281', address: 'Flat 402, Cyber Heights, Indiranagar',
+                city: 'Bengaluru', state: 'Karnataka', zip: '560038',
+                date: '2026-10-01', status: 'Approved', step: 4, officerNotes: 'Biometric verified via UIDAI mock gateway'
+            },
+            {
+                id: 102, ackId: 'ACK-PEN-7412', service: 'Pension Service Application',
+                applicantName: 'Rajesh Kumar Verma', applicantEmail: 'rajesh.verma@seniorgov.in', applicantPhone: '+91 94150 99881',
+                dob: '1962-03-22', ssn: '4920-1192-3021', address: '12-A, Old Cantonment Road',
+                city: 'Lucknow', state: 'Uttar Pradesh', zip: '226001',
+                date: '2026-10-02', status: 'Under Review', step: 3, officerNotes: 'Awaiting pension disbursement bank linkage'
+            },
+            {
+                id: 103, ackId: 'ACK-SCH-2940', service: 'Scholarship Application',
+                applicantName: 'Aarav Patel', applicantEmail: 'aarav.patel@iitd.ac.in', applicantPhone: '+91 91234 56789',
+                dob: '2004-11-05', ssn: '7721-9043-1823', address: 'Hostel 7, Nilgiri House, IIT Campus',
+                city: 'New Delhi', state: 'Delhi', zip: '110016',
+                date: '2026-10-03', status: 'Pending', step: 1, officerNotes: 'Fresh application received'
+            },
+            {
+                id: 104, ackId: 'ACK-HLT-5190', service: 'Healthcare Scheme',
+                applicantName: 'Sunita Devi', applicantEmail: 'sunita.devi@gram.in', applicantPhone: '+91 97180 23412',
+                dob: '1978-05-19', ssn: '3902-8812-4019', address: 'Village Rampur, Post Office Kalan',
+                city: 'Varanasi', state: 'Uttar Pradesh', zip: '221001',
+                date: '2026-10-03', status: 'Under Review', step: 2, officerNotes: 'Income certificate cross-check under scrutiny'
+            },
+            {
+                id: 105, ackId: 'ACK-BUS-9310', service: 'Business License Application',
+                applicantName: 'Vikram Malhotra', applicantEmail: 'vikram@malhotratech.com', applicantPhone: '+91 98110 54321',
+                dob: '1989-12-10', ssn: '5821-4902-1184', address: 'Unit 14B, Okhla Industrial Phase III',
+                city: 'New Delhi', state: 'Delhi', zip: '110020',
+                date: '2026-10-04', status: 'Pending', step: 1, officerNotes: 'GSTIN verification in queue'
+            }
+        ];
+
+        let currentActivePOV = 'citizen';
+        let selectedAppForScrutiny = null;
+
+        function loadDemoProfile(key) {
+            sfxSuccess();
+            const citizen = demoCitizens[key];
+            if (!citizen) return;
+            document.getElementById('login-name').value = citizen.name;
+            document.getElementById('login-email').value = citizen.email;
+            document.getElementById('login-phone').value = citizen.phone;
+            document.getElementById('login-password').value = 'securepass2026';
+            localStorage.setItem(VAULT_KEY, JSON.stringify(citizen));
+            showToast(`Loaded ${citizen.name}'s profile. Click Submit!`, 'info');
+        }
+
+        function getStatusInfo(status) {
+            switch(status) {
+                case 'Approved':
+                    return { dot: 'bg-cyber-emerald shadow-[0_0_8px_#10b981]', badge: 'bg-cyber-emerald/15 text-cyber-emerald border-cyber-emerald/30', icon: 'fa-circle-check', label: 'Approved' };
+                case 'Under Review':
+                    return { dot: 'bg-cyanAccent-400 shadow-[0_0_8px_#22d3ee]', badge: 'bg-cyanAccent-500/15 text-cyanAccent-400 border-cyanAccent-500/30', icon: 'fa-magnifying-glass-chart', label: 'Under Review' };
+                case 'Pending':
+                    return { dot: 'bg-cyber-amber shadow-[0_0_8px_#f59e0b]', badge: 'bg-cyber-amber/15 text-cyber-amber border-cyber-amber/30', icon: 'fa-clock', label: 'Pending' };
+                case 'Rejected':
+                    return { dot: 'bg-rose-500 shadow-[0_0_8px_#f43f5e]', badge: 'bg-rose-500/15 text-rose-400 border-rose-500/30', icon: 'fa-circle-xmark', label: 'Rejected' };
+                default:
+                    return { dot: 'bg-brand-400 shadow-[0_0_8px_#60a5fa]', badge: 'bg-brand-500/15 text-brand-300 border-brand-500/30', icon: 'fa-arrow-up-from-bracket', label: 'Submitted' };
+            }
+        }
+
+        function togglePOV() {
+            if (currentActivePOV === 'citizen') switchView('admin');
+            else switchView('citizen');
+        }
+
+        function switchView(view) {
+            sfxClick();
+            currentActivePOV = view;
+            const toggleText = document.getElementById('pov-toggle-text');
+            const toggleBtn = document.getElementById('pov-toggle-btn');
+            const rolePill = document.getElementById('role-pill');
+            const rolePillText = document.getElementById('role-pill-text');
+
+            if (view === 'admin') {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('home-dashboard').classList.add('hidden');
+                document.getElementById('admin-dashboard').classList.remove('hidden');
+
+                toggleText.textContent = 'Switch to Citizen POV';
+                toggleBtn.className = 'flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-500/20 hover:bg-brand-500/30 border border-brand-500/50 text-brand-300 transition-all text-xs font-bold';
+                rolePill.className = 'inline-flex items-center gap-1.5 text-cyber-amber font-semibold bg-cyber-amber/10 px-2 py-0.5 rounded-full border border-cyber-amber/30';
+                rolePillText.textContent = 'ADMINISTRATION POV';
+
+                renderAdminDashboard();
+                showToast('Switched to Administrator Scrutiny Portal', 'info');
+            } else {
+                document.getElementById('admin-dashboard').classList.add('hidden');
+                const user = JSON.parse(localStorage.getItem(DB_KEY));
+                if (user) {
+                    document.getElementById('home-dashboard').classList.remove('hidden');
+                    document.getElementById('login-section').classList.add('hidden');
+                    populateRecentApps();
+                } else {
+                    document.getElementById('login-section').classList.remove('hidden');
+                    document.getElementById('home-dashboard').classList.add('hidden');
+                }
+
+                toggleText.textContent = 'Switch to Admin POV';
+                toggleBtn.className = 'flex items-center gap-2 px-3 py-2 rounded-xl bg-cyber-amber/15 hover:bg-cyber-amber/25 border border-cyber-amber/40 text-cyber-amber transition-all text-xs font-bold shadow-lg shadow-cyber-amber/10';
+                rolePill.className = 'inline-flex items-center gap-1.5 text-cyber-emerald font-semibold bg-cyber-emerald/10 px-2 py-0.5 rounded-full border border-cyber-emerald/30';
+                rolePillText.textContent = 'CITIZEN GATEWAY';
+
+                showToast('Switched to Citizen Gateway', 'info');
+            }
+        }
+
+        // Administrator POV logic
+        function renderAdminDashboard() {
+            const apps = getApps();
+            const total = apps.length;
+            const pending = apps.filter(a => a.status === 'Pending').length;
+            const review = apps.filter(a => a.status === 'Under Review').length;
+            const approved = apps.filter(a => a.status === 'Approved').length;
+            const rejected = apps.filter(a => a.status === 'Rejected').length;
+
+            document.getElementById('adm-count-total').textContent = total;
+            document.getElementById('adm-count-pending').textContent = pending;
+            document.getElementById('adm-count-review').textContent = review;
+            document.getElementById('adm-count-approved').textContent = approved;
+            document.getElementById('adm-count-rejected').textContent = rejected;
+
+            renderAdminExcelTable();
+        }
+
+        function renderAdminExcelTable() {
+            const apps = getApps();
+            const query = (document.getElementById('adm-search-input')?.value || '').toLowerCase();
+            const statusFilter = document.getElementById('adm-status-filter')?.value || 'ALL';
+
+            const filtered = apps.filter(a => {
+                const matchStatus = statusFilter === 'ALL' || a.status === statusFilter;
+                const matchQuery = (a.ackId || '').toLowerCase().includes(query) ||
+                                   (a.applicantName || '').toLowerCase().includes(query) ||
+                                   (a.service || '').toLowerCase().includes(query) ||
+                                   (a.city || '').toLowerCase().includes(query) ||
+                                   (a.ssn || '').toLowerCase().includes(query);
+                return matchStatus && matchQuery;
+            });
+
+            document.getElementById('adm-sheet-rows-label').textContent = `(${filtered.length} rows)`;
+            const tbody = document.getElementById('adm-excel-tbody');
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500 font-mono">No matching records in setugov.xlsx.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map((a, idx) => {
+                const st = getStatusInfo(a.status);
+                const ack = a.ackId || `ACK-${a.id}`;
+                const name = a.applicantName || 'Citizen Applicant';
+                const email = a.applicantEmail || 'N/A';
+                const location = (a.city && a.state) ? `${a.city}, ${a.state}` : (a.city || 'India');
+
+                return `
+                    <tr class="hover:bg-slate-800/40 transition group border-b border-white/5 font-mono text-xs">
+                        <td class="p-3.5 pl-5">
+                            <span class="text-cyanAccent-300 font-bold">${ack}</span>
+                            <div class="text-[9px] text-slate-500">Row #${idx + 1}</div>
+                        </td>
+                        <td class="p-3.5 font-sans">
+                            <div class="font-bold text-white text-xs">${name}</div>
+                            <div class="text-[10px] text-slate-400 font-mono">${email}</div>
+                        </td>
+                        <td class="p-3.5 font-sans">
+                            <span class="text-xs text-brand-300 font-medium">${a.service}</span>
+                        </td>
+                        <td class="p-3.5 font-mono text-[11px] text-slate-300">
+                            ${a.ssn || 'XXXX-XXXX-XXXX'}
+                        </td>
+                        <td class="p-3.5 font-sans text-xs text-slate-300">
+                            ${location}
+                        </td>
+                        <td class="p-3.5 font-mono text-[11px] text-slate-400">
+                            ${a.date}
+                        </td>
+                        <td class="p-3.5">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-mono font-bold ${st.badge}">
+                                <i class="fas ${st.icon} text-[9px]"></i>
+                                <span>${a.status}</span>
+                            </span>
+                        </td>
+                        <td class="p-3.5 pr-5 text-right font-sans">
+                            <div class="inline-flex items-center gap-1.5">
+                                <button onclick="quickUpdateStatus(${a.id}, 'Approved')" title="Accept / Approve"
+                                    class="p-1.5 px-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition text-xs font-medium">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button onclick="quickUpdateStatus(${a.id}, 'Under Review')" title="Mark Under Review"
+                                    class="p-1.5 px-2 rounded-lg bg-cyanAccent-500/10 hover:bg-cyanAccent-500/30 text-cyanAccent-400 border border-cyanAccent-500/30 transition text-xs font-medium">
+                                    <i class="fas fa-magnifying-glass"></i>
+                                </button>
+                                <button onclick="quickUpdateStatus(${a.id}, 'Rejected')" title="Reject Application"
+                                    class="p-1.5 px-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 transition text-xs font-medium">
+                                    <i class="fas fa-xmark"></i>
+                                </button>
+                                <button onclick="openScrutinyModal(${a.id})" title="Full Dossier Scrutiny"
+                                    class="p-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 border border-white/10 transition text-xs">
+                                    <i class="fas fa-eye text-brand-400"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function quickUpdateStatus(appId, newStatus) {
+            const apps = getApps();
+            const target = apps.find(a => a.id === appId);
+            if (!target) return;
+
+            target.status = newStatus;
+            target.step = newStatus === 'Approved' ? 4 : (newStatus === 'Under Review' ? 3 : 2);
+            localStorage.setItem(APPS_KEY, JSON.stringify(apps));
+
+            if (newStatus === 'Approved') sfxSuccess();
+            else if (newStatus === 'Rejected') sfxReject();
+            else sfxClick();
+
+            renderAdminDashboard();
+            showToast(`${target.ackId || 'Application'}: Marked as ${newStatus}`, newStatus === 'Approved' ? 'success' : (newStatus === 'Rejected' ? 'error' : 'info'));
+        }
+
+        function openScrutinyModal(appId) {
+            sfxClick();
+            const apps = getApps();
+            const app = apps.find(a => a.id === appId);
+            if (!app) return;
+
+            selectedAppForScrutiny = app;
+            document.getElementById('sc-ack').textContent = app.ackId || `ACK-${app.id}`;
+            document.getElementById('sc-name').textContent = app.applicantName || 'Citizen Applicant';
+            document.getElementById('sc-service').textContent = app.service;
+            document.getElementById('sc-ssn').textContent = app.ssn || 'XXXX-XXXX-XXXX';
+            document.getElementById('sc-phone').textContent = app.applicantPhone || 'N/A';
+            document.getElementById('sc-email').textContent = app.applicantEmail || 'N/A';
+            document.getElementById('sc-dob').textContent = app.dob || 'N/A';
+            document.getElementById('sc-date').textContent = app.date;
+            document.getElementById('sc-address').textContent = `${app.address || 'Standard Address'}, ${app.city || ''}, ${app.state || ''} - ${app.zip || ''}`;
+            document.getElementById('sc-remarks').value = app.officerNotes || '';
+
+            document.getElementById('scrutiny-modal').classList.remove('hidden');
+        }
+
+        function applyDecision(decision) {
+            if (!selectedAppForScrutiny) return;
+            const remarks = document.getElementById('sc-remarks').value.trim();
+
+            const apps = getApps();
+            const target = apps.find(a => a.id === selectedAppForScrutiny.id);
+            if (target) {
+                target.status = decision;
+                target.officerNotes = remarks || `Official adjudication: ${decision}`;
+                target.step = decision === 'Approved' ? 4 : (decision === 'Under Review' ? 3 : 2);
+                localStorage.setItem(APPS_KEY, JSON.stringify(apps));
+            }
+
+            closeModal('scrutiny-modal');
+            renderAdminDashboard();
+
+            if (decision === 'Approved') {
+                sfxSuccess();
+                showConfetti();
+                showToast(`Application ${target.ackId} APPROVED & issued to applicant.`, 'success');
+            } else if (decision === 'Rejected') {
+                sfxReject();
+                showToast(`Application ${target.ackId} REJECTED with officer deficiency notice.`, 'error');
+            } else {
+                sfxClick();
+                showToast(`Application ${target.ackId} moved to ACTIVE SCRUTINY.`, 'info');
+            }
+        }
+
+        function injectMockCitizenApplication() {
+            sfxScan();
+            const names = ['Kavita Sundaram', 'Mohammed Tariq', 'Ananya Deshmukh', 'Gurpreet Singh', 'Deepak Joshi'];
+            const states = ['Maharashtra', 'Punjab', 'Tamil Nadu', 'Karnataka', 'Rajasthan'];
+            const randomName = names[Math.floor(Math.random() * names.length)];
+            const randomService = services[Math.floor(Math.random() * services.length)].name;
+            const randomState = states[Math.floor(Math.random() * states.length)];
+            const newAck = `ACK-${randomService.slice(0,3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            const newApp = {
+                id: Date.now(),
+                ackId: newAck,
+                service: randomService,
+                applicantName: randomName,
+                applicantEmail: `${randomName.toLowerCase().replace(' ', '.')}@citizen.gov.in`,
+                applicantPhone: `+91 ${Math.floor(9000000000 + Math.random() * 999999999)}`,
+                dob: '1992-04-18',
+                ssn: `${Math.floor(1000 + Math.random()*9000)}-${Math.floor(1000 + Math.random()*9000)}-${Math.floor(1000 + Math.random()*9000)}`,
+                address: 'Plot 7, Green Avenue',
+                city: 'Metropolis',
+                state: randomState,
+                zip: '400001',
+                date: new Date().toISOString().split('T')[0],
+                status: 'Pending',
+                step: 1,
+                officerNotes: 'Inbound application filed via portal'
+            };
+
+            const apps = getApps();
+            apps.unshift(newApp);
+            localStorage.setItem(APPS_KEY, JSON.stringify(apps));
+
+            renderAdminDashboard();
+            showToast(`New Application Ingested: ${newAck} by ${randomName}`, 'success');
+        }
+
+        function exportToExcel() {
+            sfxSuccess();
+            const apps = getApps();
+            const excelRows = apps.map((a, i) => ({
+                "Row #": i + 1,
+                "Ack Reference ID": a.ackId || `ACK-${a.id}`,
+                "Applicant Legal Name": a.applicantName || 'Citizen Applicant',
+                "Email Address": a.applicantEmail || 'N/A',
+                "Phone Number": a.applicantPhone || 'N/A',
+                "Date of Birth": a.dob || 'N/A',
+                "Aadhaar / Citizen ID": a.ssn || 'N/A',
+                "Scheme Requested": a.service,
+                "Street Address": a.address || 'N/A',
+                "City / District": a.city || 'N/A',
+                "State / UT": a.state || 'N/A',
+                "Postal PIN": a.zip || 'N/A',
+                "Filing Date": a.date,
+                "Administrative Decision": a.status,
+                "Officer Remarks": a.officerNotes || 'None'
+            }));
+
+            if (window.XLSX) {
+                const worksheet = XLSX.utils.json_to_sheet(excelRows);
+                worksheet['!cols'] = [
+                    { wch: 8 }, { wch: 18 }, { wch: 24 }, { wch: 26 }, { wch: 16 },
+                    { wch: 14 }, { wch: 18 }, { wch: 28 }, { wch: 30 }, { wch: 16 },
+                    { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 20 }, { wch: 35 }
+                ];
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "setugov");
+                XLSX.writeFile(workbook, "setugov.xlsx");
+                showToast("Downloaded setugov.xlsx master workbook!", "success");
+            } else {
+                downloadCSV(excelRows, "setugov.csv");
+            }
+        }
+
+        function downloadCSV(rows, filename) {
+            if (!rows.length) return;
+            const headers = Object.keys(rows[0]).join(',');
+            const csv = [headers, ...rows.map(r => Object.values(r).map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast(`Downloaded ${filename} successfully`, 'success');
+        }
+
+        // Citizen Services & Core Logic
+        let currentFilter = 'all';
+        function setCategoryFilter(cat) {
+            sfxClick();
+            currentFilter = cat;
+            document.querySelectorAll('.cat-pill').forEach(btn => {
+                if (btn.dataset.cat === cat) {
+                    btn.classList.add('bg-brand-500/30', 'text-white');
+                    btn.classList.remove('text-slate-400');
+                } else {
+                    btn.classList.remove('bg-brand-500/30', 'text-white');
+                    btn.classList.add('text-slate-400');
+                }
+            });
+            filterServices();
+        }
+
+        function filterServices() {
+            const query = (document.getElementById('service-search-input')?.value || '').toLowerCase();
+            const grid = document.getElementById('services-grid');
+            const filtered = services.filter(s => {
+                const matchCat = currentFilter === 'all' || s.category === currentFilter;
+                const matchText = s.name.toLowerCase().includes(query) || s.sub.toLowerCase().includes(query);
+                return matchCat && matchText;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-500 text-xs font-mono">No matching civic services found.</div>';
+                return;
+            }
+
+            grid.innerHTML = filtered.map(s => `
+                <div class="service-tile glass-panel rounded-2xl p-4 border border-white/10 hover:border-brand-500/40 cursor-pointer spotlight-card group"
+                     onmouseenter="sfxHover()"
+                     onclick="openServiceForm('${s.name}')">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="service-icon w-12 h-12 rounded-xl bg-gradient-to-tr ${s.gradient} flex items-center justify-center text-white text-base shadow-md transition-all">
+                            <i class="fas fa-${s.icon}"></i>
+                        </div>
+                        <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">${s.wait}</span>
+                    </div>
+                    <h3 class="font-bold text-white text-xs sm:text-sm group-hover:text-cyanAccent-300 transition-colors">${s.label}</h3>
+                    <p class="text-[11px] text-slate-400 mt-1 line-clamp-1">${s.sub}</p>
+                    <div class="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px] text-brand-400 font-medium">
+                        <span>Launch Auto-Fill</span>
+                        <i class="fas fa-arrow-right text-[9px] group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            filterServices();
+            if (!localStorage.getItem(APPS_KEY)) {
+                localStorage.setItem(APPS_KEY, JSON.stringify(defaultApps));
+            }
+            const savedUser = JSON.parse(localStorage.getItem(DB_KEY));
+            if (savedUser) showHome(savedUser);
+            else loadDemoProfile('priya');
+        });
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            sfxSuccess();
+            const user = {
+                name: document.getElementById('login-name').value.trim(),
+                email: document.getElementById('login-email').value.trim(),
+                phone: document.getElementById('login-phone').value.trim()
+            };
+            localStorage.setItem(DB_KEY, JSON.stringify(user));
+
+            const vault = JSON.parse(localStorage.getItem(VAULT_KEY)) || {};
+            vault.name = user.name; vault.email = user.email; vault.phone = user.phone;
+            localStorage.setItem(VAULT_KEY, JSON.stringify(vault));
+
+            showHome(user);
+            showConfetti();
+            showToast(`Welcome back, ${user.name}! Neural gateway unlocked.`, 'success');
+        });
+
+        function showHome(user) {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('home-dashboard').classList.remove('hidden');
+
+            const firstName = user.name.split(' ')[0] || 'Citizen';
+            const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'SG';
+
+            document.getElementById('profile-avatar').textContent = initials;
+            document.getElementById('nav-user-name').textContent = user.name;
+            document.getElementById('welcome-name').textContent = firstName;
+            document.getElementById('dropdown-email').textContent = user.email;
+
+            populateRecentApps();
+            syncProfileFormFields();
+        }
+
+        function logout() {
+            sfxClick();
+            localStorage.removeItem(DB_KEY);
+            location.reload();
+        }
+
+        function getApps() {
+            return JSON.parse(localStorage.getItem(APPS_KEY)) || [];
+        }
+
+        function populateRecentApps() {
+            const apps = getApps();
+            const container = document.getElementById('recent-apps');
+            const bannerCount = document.getElementById('banner-app-count');
+            if (bannerCount) bannerCount.textContent = apps.length;
+
+            if (apps.length === 0) {
+                container.innerHTML = `<div class="col-span-full p-8 rounded-2xl glass-panel text-center text-slate-500 text-xs font-mono">No active filings. Pick a service below.</div>`;
+                return;
+            }
+
+            container.innerHTML = apps.slice(0, 3).map(app => {
+                const st = getStatusInfo(app.status);
+                const ack = app.ackId || `ACK-SETU-${app.id}`;
+                return `
+                    <div class="glass-panel rounded-2xl p-4 border border-white/10 hover:border-brand-500/40 transition group cursor-pointer spotlight-card"
+                         onclick="inspectAppDetails(${app.id})">
+                        <div class="flex items-start justify-between gap-2 mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full ${st.dot}"></span>
+                                <span class="text-[10px] font-mono text-slate-400">${ack}</span>
+                            </div>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border ${st.badge} flex items-center gap-1">
+                                <i class="fas ${st.icon} text-[9px]"></i> ${app.status}
+                            </span>
+                        </div>
+                        <h4 class="font-bold text-white text-sm group-hover:text-cyanAccent-300 transition-colors">${app.service}</h4>
+                        <div class="flex items-center justify-between text-[11px] text-slate-400 mt-2 font-mono">
+                            <span>LODGED: ${app.date}</span>
+                            <span class="text-brand-400 group-hover:underline flex items-center gap-1">Inspect <i class="fas fa-chevron-right text-[8px]"></i></span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function inspectAppDetails(appId) {
+            sfxClick();
+            const apps = getApps();
+            const app = apps.find(a => a.id === appId) || apps[0];
+            if (!app) return;
+
+            const st = getStatusInfo(app.status);
+            const ack = app.ackId || `ACK-SETU-${app.id}`;
+            const step = app.step || 2;
+
+            document.getElementById('all-apps-list').innerHTML = `
+                <div class="p-5 rounded-2xl bg-slate-900 border border-brand-500/40 mb-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div>
+                            <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Application Reference</span>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
+                                ${ack}
+                                <span class="text-[10px] px-2 py-0.5 rounded-full border ${st.badge}">${app.status}</span>
+                            </h3>
+                            <p class="text-xs text-brand-300 mt-0.5">${app.service} • Applicant: ${app.applicantName || 'Citizen'}</p>
+                            ${app.officerNotes ? `<p class="text-[11px] text-cyber-amber mt-1 font-mono"><i class="fas fa-clipboard-check"></i> Officer Note: ${app.officerNotes}</p>` : ''}
+                        </div>
+                        <button onclick="openReceiptModal('${ack}', '${app.service}', '${app.applicantName || 'Citizen'}', '${app.status}')" class="px-3.5 py-1.5 rounded-xl btn-vibe text-white text-xs font-semibold flex items-center gap-1.5">
+                            <i class="fas fa-receipt"></i> Digital Pass Slip
+                        </button>
+                    </div>
+
+                    <div class="py-2">
+                        <div class="text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-3">Department Workflow Progress</div>
+                        <div class="grid grid-cols-4 gap-2 relative">
+                            <div class="p-2.5 rounded-xl ${step >= 1 ? 'bg-cyber-emerald/10 border border-cyber-emerald/40 text-cyber-emerald' : 'bg-slate-800 text-slate-500'} text-center">
+                                <i class="fas fa-check-circle text-xs mb-1"></i>
+                                <div class="text-[10px] font-semibold">1. Lodged</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl ${step >= 2 ? 'bg-cyber-emerald/10 border border-cyber-emerald/40 text-cyber-emerald' : 'bg-slate-800 text-slate-500'} text-center">
+                                <i class="fas fa-fingerprint text-xs mb-1"></i>
+                                <div class="text-[10px] font-semibold">2. Biometrics</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl ${step >= 3 ? 'bg-cyber-emerald/10 border border-cyber-emerald/40 text-cyber-emerald' : 'bg-slate-800 text-slate-500'} text-center">
+                                <i class="fas fa-user-check text-xs mb-1"></i>
+                                <div class="text-[10px] font-semibold">3. Scrutiny</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl ${step >= 4 ? 'bg-cyber-emerald/10 border border-cyber-emerald/40 text-cyber-emerald' : 'bg-slate-800 text-slate-500'} text-center">
+                                <i class="fas fa-certificate text-xs mb-1"></i>
+                                <div class="text-[10px] font-semibold">4. Dispatched</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-xs font-mono text-slate-400 uppercase mb-2">Complete Ledger Log (${apps.length} items in setugov.xlsx)</div>
+                <div class="space-y-2">
+                    ${apps.map(a => {
+                        const s = getStatusInfo(a.status);
+                        return `
+                            <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-900/60 border border-white/5">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-2 h-2 rounded-full ${s.dot}"></span>
+                                    <div>
+                                        <div class="text-xs font-semibold text-white">${a.service}</div>
+                                        <div class="text-[10px] text-slate-500 font-mono">${a.ackId || 'ACK-'+a.id} • ${a.applicantName || 'Citizen'} • ${a.date}</div>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border ${s.badge}">${a.status}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            document.getElementById('apps-modal').classList.remove('hidden');
+        }
+
+        function showApplications() {
+            inspectAppDetails(getApps()[0]?.id || 101);
+        }
+
+        function openReceiptModal(ackId, serviceName, applicantName, status) {
+            sfxSuccess();
+            const user = JSON.parse(localStorage.getItem(DB_KEY)) || { name: 'Verified Citizen' };
+            document.getElementById('receipt-id').textContent = ackId;
+            document.getElementById('receipt-service').textContent = serviceName;
+            document.getElementById('receipt-applicant').textContent = applicantName || user.name;
+            document.getElementById('receipt-status').textContent = (status || 'APPROVED').toUpperCase();
+            document.getElementById('receipt-time').textContent = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+            document.getElementById('receipt-modal').classList.remove('hidden');
+        }
+
+        function openServiceForm(serviceName) {
+            sfxClick();
+            document.getElementById('service-title').textContent = serviceName;
+            clearGovForm();
+            document.getElementById('service-modal').classList.remove('hidden');
+        }
+
+        function aiAutoFill() {
+            sfxScan();
+            const btn = document.getElementById('ai-fill-btn');
+            const scanline = document.getElementById('modal-scanline');
+            const originalContent = btn.innerHTML;
+
+            scanline.classList.remove('hidden');
+            scanline.classList.add('animate-scanline');
+
+            btn.innerHTML = `<i class="fas fa-radar animate-spin"></i><span>Scanning Vault...</span>`;
+            btn.disabled = true;
+
+            setTimeout(() => {
+                const vault = JSON.parse(localStorage.getItem(VAULT_KEY));
+                const user = JSON.parse(localStorage.getItem(DB_KEY)) || {};
+
+                if (!vault || !vault.name) {
+                    showToast('Please save your Citizen Vault Profile first', 'warning');
+                    scanline.classList.add('hidden');
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                    return;
+                }
+
+                const fields = [
+                    { id:'gov-name', val: vault.name || user.name },
+                    { id:'gov-dob', val: vault.dob || '1996-08-14' },
+                    { id:'gov-ssn', val: vault.ssn || '8492-3810-9281' },
+                    { id:'gov-phone', val: vault.phone || user.phone },
+                    { id:'gov-email', val: vault.email || user.email },
+                    { id:'gov-address', val: vault.address || 'Indiranagar' },
+                    { id:'gov-city', val: vault.city || 'Bengaluru' },
+                    { id:'gov-state', val: vault.state || 'Karnataka' },
+                    { id:'gov-zip', val: vault.zip || '560038' }
+                ];
+
+                fields.forEach((f, idx) => {
+                    setTimeout(() => {
+                        const el = document.getElementById(f.id);
+                        if (el) {
+                            el.value = f.val;
+                            el.classList.add('border-cyber-emerald', 'shadow-[0_0_10px_rgba(16,185,129,0.3)]');
+                            setTimeout(() => el.classList.remove('border-cyber-emerald', 'shadow-[0_0_10px_rgba(16,185,129,0.3)]'), 1200);
+                        }
+                    }, idx * 60);
+                });
+
+                sfxSuccess();
+                scanline.classList.add('hidden');
+                btn.innerHTML = `<i class="fas fa-check text-cyber-emerald"></i><span>Neural Auto-Filled!</span>`;
+                showToast('All 9 identity parameters authenticated & filled', 'success');
+
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                }, 2500);
+            }, 750);
+        }
+
+        function simulateDocUpload() {
+            sfxScan();
+            const label = document.getElementById('doc-upload-label');
+            label.innerHTML = `<span class="text-cyanAccent-400"><i class="fas fa-circle-notch animate-spin"></i> Neural OCR Parsing ID Proof...</span>`;
+            setTimeout(() => {
+                sfxSuccess();
+                label.innerHTML = `<span class="text-cyber-emerald font-mono"><i class="fas fa-shield-check"></i> UIDAI_IDENTITY_VERIFIED.pdf (Signed)</span>`;
+                showToast('OCR extracted: Biometrics & Address Authenticated', 'success');
+            }, 900);
+        }
+
+        function clearGovForm() {
+            document.getElementById('gov-form').reset();
+            const label = document.getElementById('doc-upload-label');
+            if (label) label.textContent = 'Click to attach ID Proof (PDF, JPG)';
+        }
+
+        function submitApplication() {
+            const nameField = document.getElementById('gov-name').value.trim();
+            if (!nameField) {
+                showToast('Please fill or auto-fill your details before submitting', 'warning');
+                return;
+            }
+
+            sfxSuccess();
+            showConfetti();
+
+            const service = document.getElementById('service-title').textContent;
+            const newAck = `ACK-${service.slice(0,3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            const newApp = {
+                id: Date.now(),
+                ackId: newAck,
+                service,
+                applicantName: nameField,
+                applicantEmail: document.getElementById('gov-email').value.trim() || 'citizen@domain.com',
+                applicantPhone: document.getElementById('gov-phone').value.trim() || '+91 98765 43210',
+                dob: document.getElementById('gov-dob').value || '1996-08-14',
+                ssn: document.getElementById('gov-ssn').value.trim() || 'XXXX-XXXX-XXXX',
+                address: document.getElementById('gov-address').value.trim() || 'Citizen Residence',
+                city: document.getElementById('gov-city').value.trim() || 'District',
+                state: document.getElementById('gov-state').value.trim() || 'State',
+                zip: document.getElementById('gov-zip').value.trim() || '000000',
+                date: new Date().toISOString().split('T')[0],
+                status: 'Pending',
+                step: 1,
+                officerNotes: 'Submitted by citizen via web portal'
+            };
+
+            const apps = getApps();
+            apps.unshift(newApp);
+            localStorage.setItem(APPS_KEY, JSON.stringify(apps));
+
+            closeModal('service-modal');
+            populateRecentApps();
+            openReceiptModal(newAck, service, nameField, 'Pending');
+            showToast(`Application successfully ingested into setugov.xlsx!`, 'success');
+        }
+
+        function showProfileModal() {
+            sfxClick();
+            syncProfileFormFields();
+            document.getElementById('profile-modal').classList.remove('hidden');
+        }
+
+        function syncProfileFormFields() {
+            const vault = JSON.parse(localStorage.getItem(VAULT_KEY)) || {};
+            const user = JSON.parse(localStorage.getItem(DB_KEY)) || {};
+            document.getElementById('pi-name').value = vault.name || user.name || '';
+            document.getElementById('pi-email').value = vault.email || user.email || '';
+            document.getElementById('pi-phone').value = vault.phone || user.phone || '';
+            document.getElementById('pi-dob').value = vault.dob || '';
+            document.getElementById('pi-ssn').value = vault.ssn || '';
+            document.getElementById('pi-address').value = vault.address || '';
+            document.getElementById('pi-city').value = vault.city || '';
+            document.getElementById('pi-state').value = vault.state || '';
+            document.getElementById('pi-zip').value = vault.zip || '';
+        }
+
+        document.getElementById('profile-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            sfxSuccess();
+            const personalInfo = {
+                name: document.getElementById('pi-name').value.trim(),
+                email: document.getElementById('pi-email').value.trim(),
+                phone: document.getElementById('pi-phone').value.trim(),
+                dob: document.getElementById('pi-dob').value,
+                ssn: document.getElementById('pi-ssn').value.trim(),
+                address: document.getElementById('pi-address').value.trim(),
+                city: document.getElementById('pi-city').value.trim(),
+                state: document.getElementById('pi-state').value.trim(),
+                zip: document.getElementById('pi-zip').value.trim()
+            };
+            localStorage.setItem(VAULT_KEY, JSON.stringify(personalInfo));
+
+            const user = JSON.parse(localStorage.getItem(DB_KEY)) || {};
+            user.name = personalInfo.name;
+            user.email = personalInfo.email;
+            user.phone = personalInfo.phone;
+            localStorage.setItem(DB_KEY, JSON.stringify(user));
+
+            showHome(user);
+            closeModal('profile-modal');
+            showToast('Encrypted Citizen Vault updated successfully', 'success');
+        });
+
+        // Command Palette (Ctrl+K)
+        const systemCommands = [
+            { title: 'Switch to Administrator POV', category: 'Role', action: () => switchView('admin') },
+            { title: 'Download setugov.xlsx Master Excel', category: 'Admin', action: () => exportToExcel() },
+            { title: 'Switch to Citizen Gateway View', category: 'Role', action: () => switchView('citizen') },
+            { title: 'Simulate Inbound Applicant', category: 'Admin', action: () => injectMockCitizenApplication() },
+            { title: 'Aadhar Card Update', category: 'Service', action: () => openServiceForm('Aadhar Card Update') },
+            { title: 'PAN Card 2.0 Application', category: 'Service', action: () => openServiceForm('PAN Card Application') },
+            { title: 'Business License (MSME)', category: 'Service', action: () => openServiceForm('Business License Application') },
+            { title: 'Track Applications Pipeline', category: 'App', action: () => showApplications() },
+            { title: 'Edit Citizen Vault Profile', category: 'Account', action: () => showProfileModal() },
+            { title: 'Toggle Audio & Sound Effects', category: 'Vibe', action: () => toggleSound() },
+            { title: 'Trigger Celebration Confetti', category: 'Vibe', action: () => showConfetti() }
+        ];
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                openCmdPalette();
+            }
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.fixed').forEach(el => {
+                    if (!el.classList.contains('hidden')) el.classList.add('hidden');
+                });
+            }
+        });
+
+        function openCmdPalette() {
+            sfxClick();
+            document.getElementById('cmd-palette-modal').classList.remove('hidden');
+            const input = document.getElementById('cmd-input');
+            input.value = '';
+            input.focus();
+            renderCmdResults(systemCommands);
+        }
+
+        function handleCmdSearch() {
+            const q = document.getElementById('cmd-input').value.toLowerCase();
+            renderCmdResults(systemCommands.filter(c => c.title.toLowerCase().includes(q) || c.category.toLowerCase().includes(q)));
+        }
+
+        function renderCmdResults(cmds) {
+            const container = document.getElementById('cmd-results');
+            if (cmds.length === 0) {
+                container.innerHTML = `<div class="p-4 text-center text-xs text-slate-500 font-mono">No matching actions.</div>`;
+                return;
+            }
+            container.innerHTML = cmds.map((c, i) => `
+                <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-brand-500/20 text-slate-300 hover:text-white cursor-pointer transition font-mono text-xs"
+                     onclick="executeCmd(${i})">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-chevron-right text-[10px] text-brand-400"></i>
+                        <span>${c.title}</span>
+                    </div>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400">${c.category}</span>
+                </div>
+            `).join('');
+            window._activeCmds = cmds;
+        }
+
+        function executeCmd(index) {
+            const cmd = window._activeCmds ? window._activeCmds[index] : systemCommands[index];
+            if (cmd) {
+                closeModal('cmd-palette-modal');
+                cmd.action();
+            }
+        }
+
+        // AI Copilot Knowledge Base & Streaming Typewriter
+        const faqKnowledgeBase = [
+            {
+                keywords: ['admin', 'excel', 'sheet', 'administrator', 'pov', 'officer', 'setugov.xlsx'],
+                actionLabel: 'Open Admin POV',
+                serviceTrigger: 'OPEN_ADMIN',
+                answer: 'Administrator Mode: You can switch to the Administrator POV anytime using the gold button in the top navigation. There, all citizen applications are synced live into the "setugov.xlsx" table where officers can review, download the real Excel spreadsheet, and mark requests as In Review, Approved, or Rejected!'
+            },
+            {
+                keywords: ['business', 'license', 'shop', 'store', 'trade', 'msme', 'company'],
+                actionLabel: 'Launch Business Form',
+                serviceTrigger: 'Business License Application',
+                answer: 'To apply for a Business License (MSME / Trade Registry): Click below to launch the pre-configured form. The system will verify your PAN, Aadhaar identity, and enterprise jurisdiction.'
+            },
+            {
+                keywords: ['pension', 'retirement', 'senior', 'elderly', 'old age', 'epfo', 'atal'],
+                actionLabel: 'Launch Pension Form',
+                serviceTrigger: 'Pension Service Application',
+                answer: 'Senior Citizen Pension Requirements: (1) Proof of age (Aadhaar or Matriculation), (2) Active bank account with NPCI Aadhaar seeding, (3) Income/Domicile certificate.'
+            },
+            {
+                keywords: ['property', 'tax', 'house', 'land', 'building', 'municipal'],
+                actionLabel: 'Open Property Tax',
+                serviceTrigger: 'Property Tax Application',
+                answer: 'Property Tax assessment is calculated using your local municipal zone and carpet area. SetuGov pulls your registered property record automatically through our civic GIS bridge.'
+            },
+            {
+                keywords: ['ai', 'autofill', 'auto fill', 'auto-fill', 'magic', 'fill', 'prefill', 'how'],
+                actionLabel: 'Edit Vault Details',
+                serviceTrigger: null,
+                answer: 'AI Auto-Fill uses zero-knowledge encryption to store your verified details in your local Citizen Vault. When opening any government service form, the neural agent auto-populates legal name, Aadhaar token, address, and date of birth in 1 click.'
+            },
+            {
+                keywords: ['track', 'application', 'status', 'my applications', 'history', 'check', 'ledger'],
+                actionLabel: 'Open Pipeline Tracker',
+                serviceTrigger: 'TRACK_APPS',
+                answer: 'All filings are recorded on the civic ledger with real-time status: (1) Lodged, (2) Biometrics Verified, (3) Officer Scrutiny, and (4) Dispatched.'
+            }
+        ];
+
+        function sendFaqMessage() {
+            const input = document.getElementById('faq-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            askFaqQuestion(msg);
+            input.value = '';
+        }
+
+        function askFaqQuestion(question) {
+            sfxClick();
+            addFaqMessage(question, 'user');
+            showTypingIndicator();
+
+            setTimeout(() => {
+                removeTypingIndicator();
+                const matched = findFaqMatch(question);
+                typewriterMessage(matched.answer, matched.actionLabel, matched.serviceTrigger);
+            }, 650);
+        }
+
+        function findFaqMatch(question) {
+            const q = question.toLowerCase();
+            let best = null, bestScore = 0;
+            for (const entry of faqKnowledgeBase) {
+                let score = 0;
+                for (const kw of entry.keywords) {
+                    if (q.includes(kw)) score += kw.length;
+                }
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = entry;
+                }
+            }
+            if (best && bestScore > 0) return best;
+            return {
+                answer: "I can help you navigate all government schemes, explain the administrator excel ledger, trigger AI Auto-Fill, or inspect application timelines.",
+                actionLabel: 'Explore Services',
+                serviceTrigger: null
+            };
+        }
+
+        function addFaqMessage(text, sender) {
+            const chat = document.getElementById('faq-chat');
+            const div = document.createElement('div');
+            if (sender === 'user') {
+                div.className = 'flex items-start gap-3 justify-end';
+                div.innerHTML = `
+                    <div class="bg-gradient-to-r from-brand-600 to-cyanAccent-600 text-white rounded-2xl rounded-tr-sm p-3.5 shadow-md max-w-md text-sm font-medium">
+                        <p>${escapeHtml(text)}</p>
+                    </div>
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-cyanAccent-500 flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
+                        <i class="fas fa-user"></i>
+                    </div>`;
+            } else {
+                div.className = 'flex items-start gap-3';
+                div.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyanAccent-500 to-brand-500 flex items-center justify-center flex-shrink-0 text-white text-xs">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="glass-panel p-4 rounded-2xl rounded-tl-sm max-w-xl border border-white/10 shadow-sm text-sm text-slate-200 leading-relaxed">
+                        <p>${escapeHtml(text)}</p>
+                    </div>`;
+            }
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function typewriterMessage(text, actionLabel, serviceTrigger) {
+            sfxSuccess();
+            const chat = document.getElementById('faq-chat');
+            const div = document.createElement('div');
+            div.className = 'flex items-start gap-3';
+
+            const uniqueId = 'msg-' + Date.now();
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyanAccent-500 to-brand-500 flex items-center justify-center flex-shrink-0 text-white text-xs">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl rounded-tl-sm max-w-xl border border-white/10 shadow-sm text-sm text-slate-200 leading-relaxed">
+                    <p id="${uniqueId}" class="typing-cursor"></p>
+                    ${actionLabel ? `
+                        <div class="mt-3 pt-2.5 border-t border-white/5 flex gap-2">
+                            <button onclick="handleBotAction('${serviceTrigger}')" class="px-3 py-1.5 rounded-xl btn-vibe text-white text-xs font-semibold flex items-center gap-1.5">
+                                <i class="fas fa-bolt text-[10px]"></i> ${actionLabel}
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            chat.appendChild(div);
+
+            const p = document.getElementById(uniqueId);
+            let idx = 0;
+            const timer = setInterval(() => {
+                if (idx < text.length) {
+                    p.textContent += text.charAt(idx);
+                    idx++;
+                    chat.scrollTop = chat.scrollHeight;
+                } else {
+                    clearInterval(timer);
+                    p.classList.remove('typing-cursor');
+                }
+            }, 12);
+        }
+
+        function handleBotAction(trigger) {
+            sfxClick();
+            if (trigger === 'OPEN_ADMIN') {
+                switchView('admin');
+            } else if (trigger === 'TRACK_APPS') {
+                showApplications();
+            } else if (trigger) {
+                openServiceForm(trigger);
+            } else {
+                showProfileModal();
+            }
+        }
+
+        function showTypingIndicator() {
+            const chat = document.getElementById('faq-chat');
+            const div = document.createElement('div');
+            div.id = 'typing-indicator';
+            div.className = 'flex items-start gap-3';
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyanAccent-500 to-brand-500 flex items-center justify-center flex-shrink-0 text-white text-xs">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="glass-panel px-4 py-3 rounded-2xl rounded-tl-sm border border-white/10 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-cyanAccent-400 animate-ping"></span>
+                    <span class="text-xs text-slate-400 font-mono">Neural agent synthesizing response...</span>
+                </div>
+            `;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const el = document.getElementById('typing-indicator');
+            if (el) el.remove();
+        }
+
+        function clearFaqHistory() {
+            sfxClick();
+            document.getElementById('faq-chat').innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyanAccent-500 to-brand-500 flex items-center justify-center flex-shrink-0 text-white text-xs">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="glass-panel p-4 rounded-2xl rounded-tl-sm max-w-xl border border-white/10 shadow-sm text-sm text-slate-200 leading-relaxed">
+                        <p class="font-semibold text-cyanAccent-300 mb-1 flex items-center gap-1.5"><i class="fas fa-wave-pulse"></i> Chat Cleared</p>
+                        <p>Ask anything about government services, administrator sheet, or auto-fill instructions.</p>
+                    </div>
+                </div>`;
+            showToast('Chat history reset', 'info');
+        }
+
+        function triggerVoiceInput() {
+            sfxClick();
+            const btn = document.getElementById('voice-btn');
+            const input = document.getElementById('faq-input');
+
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const rec = new SpeechRec();
+                rec.lang = 'en-IN';
+                rec.interimResults = false;
+                btn.classList.add('text-rose-500', 'animate-pulse');
+                showToast('Listening... Speak now', 'info');
+
+                rec.onresult = (e) => {
+                    input.value = e.results[0][0].transcript;
+                    btn.classList.remove('text-rose-500', 'animate-pulse');
+                    sendFaqMessage();
+                };
+                rec.onerror = () => {
+                    btn.classList.remove('text-rose-500', 'animate-pulse');
+                    fallbackVoiceDemo();
+                };
+                rec.start();
+            } else {
+                fallbackVoiceDemo();
+            }
+        }
+
+        function fallbackVoiceDemo() {
+            const input = document.getElementById('faq-input');
+            const demoQuestions = [
+                'How do I view the admin excel sheet?',
+                'How do I apply for a business license?',
+                'What documents do I need for a pension application?'
+            ];
+            input.value = demoQuestions[Math.floor(Math.random() * demoQuestions.length)];
+            showToast('Simulated voice query detected', 'info');
+            sendFaqMessage();
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const icons = {
+                success: 'fa-circle-check text-cyber-emerald',
+                warning: 'fa-triangle-exclamation text-cyber-amber',
+                error: 'fa-circle-xmark text-rose-500',
+                info: 'fa-bolt text-cyanAccent-400'
+            };
+            const toast = document.createElement('div');
+            toast.className = 'glass-panel p-3.5 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-3 text-xs pointer-events-auto toast-vibe max-w-sm';
+            toast.innerHTML = `
+                <i class="fas ${icons[type] || icons.success} text-base flex-shrink-0"></i>
+                <span class="text-slate-200 font-medium">${message}</span>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'all 0.3s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(60px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3600);
+        }
+
+        function showConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.65 },
+                    colors: ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6']
+                });
+            }
+        }
+
+        function toggleDropdown() {
+            sfxClick();
+            document.getElementById('profile-dropdown').classList.toggle('hidden');
+        }
+        function closeDropdown() {
+            document.getElementById('profile-dropdown').classList.add('hidden');
+        }
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('#profile-container')) closeDropdown();
+        });
+
+        function closeModal(id) {
+            sfxClick();
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
